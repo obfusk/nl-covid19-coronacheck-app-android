@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.View
 import androidx.annotation.StringRes
 import androidx.navigation.fragment.findNavController
-import com.google.mlkit.vision.barcode.Barcode
 import nl.rijksoverheid.ctr.design.utils.DialogUtil
 import nl.rijksoverheid.ctr.qrscanner.QrCodeScannerFragment
 import nl.rijksoverheid.ctr.shared.livedata.EventObserver
@@ -45,15 +44,6 @@ class VerifierQrScannerFragment : QrCodeScannerFragment() {
                 okayButtonText = getString(R.string.ok)
             )
         )
-    }
-
-    override fun getBarcodeFormats(): List<Int> {
-        val formats = mutableListOf<Int>()
-        formats.add(Barcode.FORMAT_QR_CODE)
-        if (BuildConfig.FLAVOR == "tst") {
-            formats.add(Barcode.FORMAT_AZTEC)
-        }
-        return formats
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
