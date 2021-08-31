@@ -1,3 +1,37 @@
+# FOSS version
+
+NB: it's not really a "fork", just a few patches for F-Droid, no other
+divergence from upstream.
+
+## Upstream repo & issue tracker
+
+https://github.com/minvws/nl-covid19-coronacheck-app-android
+
+## Changes
+
+* rm .aar & add build-mobilecore.sh
+* remove proprietary dependencies
+* use zxing to scan barcodes
+* hardcode version (instead of using $GITHUB_RUN_NUMBER)
+* CI: build mobilecore.aar, only build prod APKs
+* remove non-free images (icon is replaced, rest is made blank for now)
+* disable update check
+
+## TODO
+
+* update mobilecore
+* provide triple-t metadata for F-Droid
+
+## Branches & Updates
+
+The FOSS version adds the `foss` branch: upstream's `main` + the
+changes mentioned above, as well as the `holder-foss` and
+`verifier-foss` branches for the 2 respective apps.
+
+When upstream releases a new version, we merge the specific version
+tag into `foss` and tag the new patched version as
+`holder-foss-$VERSION` and `verifier-foss-$VERSION` respectively.
+
 # COVID-19 CoronaCheck Prototype - Android
 
 ## Introduction
@@ -6,7 +40,7 @@ This repository contains the Android prototype of the Dutch COVID-19 CoronaCheck
 * The Android app is located in the repository you are currently viewing.
 * The iOS app can be found here: https://github.com/minvws/nl-covid19-coronacheck-app-ios
 
-The project is currently an experimental prototype to explore technical possibilities.   
+The project is currently an experimental prototype to explore technical possibilities.
 
 ## Development & Contribution process
 
