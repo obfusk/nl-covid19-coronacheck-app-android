@@ -67,7 +67,7 @@ class AppStatusUseCaseImpl(
     private fun checkIfActionRequired(currentVersionCode: Int, appConfig: AppConfig): AppStatus {
         return when {
             appConfig.appDeactivated -> AppStatus.Deactivated(appConfig.informationURL)
-            currentVersionCode < appConfig.minimumVersion -> AppStatus.UpdateRequired
+            // currentVersionCode < appConfig.minimumVersion -> AppStatus.UpdateRequired
             else -> AppStatus.NoActionRequired
         }
     }
