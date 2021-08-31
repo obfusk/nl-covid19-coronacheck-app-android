@@ -6,8 +6,8 @@ plugins {
     id "androidx.navigation.safeargs.kotlin"
 }
 
-def appVersionCode = System.getenv("GITHUB_RUN_NUMBER") != null ? System.getenv("GITHUB_RUN_NUMBER").toInteger() : 1000000
-version = "2.1.2"
+def appVersionCode = 1897
+version = "2.2.2"
 archivesBaseName = "verifier-v${version}-${appVersionCode}"
 
 android {
@@ -36,20 +36,10 @@ android {
         buildConfigField "String", "BASE_API_URL", "\"https://verifier-api.coronacheck.nl/v4/\""
     }
 
-    signingConfigs {
-        release {
-            storeFile file('../keystore.jks')
-            storePassword System.getenv("KEYSTORE_PASSWORD")
-            keyAlias System.getenv("KEYSTORE_KEY_ALIAS")
-            keyPassword System.getenv("KEYSTORE_KEY_PASSWORD")
-        }
-    }
-
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
         }
     }
 
@@ -63,8 +53,6 @@ android {
             buildConfigField "String", "BASE_API_URL", "\"https://api-ct.bananenhalen.nl/v4/\""
             buildConfigField "boolean", "FEATURE_CORONA_CHECK_API_CHECKS", "false"
             buildConfigField "boolean", "FEATURE_TEST_PROVIDER_API_CHECKS", "false"
-            apply plugin: 'com.google.gms.google-services'
-            apply plugin: 'com.google.firebase.crashlytics'
         }
         acc {
             dimension "environment"
@@ -72,8 +60,6 @@ android {
             applicationIdSuffix ".acc"
             manifestPlaceholders = [appLabel: "@string/app_name_acc"]
             buildConfigField "String", "BASE_API_URL", "\"https://verifier-api.acc.coronacheck.nl/v4/\""
-            apply plugin: 'com.google.gms.google-services'
-            apply plugin: 'com.google.firebase.crashlytics'
         }
         prod {
             dimension "environment"
@@ -103,7 +89,7 @@ dependencies {
     implementation "androidx.constraintlayout:constraintlayout:$constraintlayout_version"
     implementation "com.jakewharton.timber:timber:${timber_version}"
     implementation "androidx.security:security-crypto:$security_crypto_version"
-    implementation "com.google.mlkit:barcode-scanning:${mlkit_barcode_version}"
+    implementation "com.google.zxing:core:$zxing_core_version"
     implementation(platform("com.squareup.okhttp3:okhttp-bom:$okhttp_version"))
 
     testImplementation "androidx.test:runner:$androix_test_version"
@@ -121,9 +107,6 @@ dependencies {
     testImplementation "androidx.navigation:navigation-testing:$navigation_version"
 
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:$desugar_jdk_version"
-
-    tstImplementation "com.google.firebase:firebase-crashlytics-ktx:$crashlytics_version"
-    accImplementation "com.google.firebase:firebase-crashlytics-ktx:$crashlytics_version"
 
     debugImplementation "androidx.fragment:fragment-testing:$fragment_version"
 }

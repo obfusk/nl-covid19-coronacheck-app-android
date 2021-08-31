@@ -13,7 +13,10 @@ import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.DisplayMetrics
+import android.util.Size
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
@@ -29,10 +32,8 @@ import androidx.core.view.updateMargins
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.mlkit.vision.barcode.BarcodeScanner
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
+import com.google.zxing.*
+import com.google.zxing.common.HybridBinarizer
 import nl.rijksoverheid.ctr.qrscanner.databinding.FragmentScannerBinding
 import timber.log.Timber
 import java.util.concurrent.Executors
@@ -222,16 +223,14 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
         cameraSelector: CameraSelector,
         aspectRatio: Int
     ) {
-        // Set up options for the scanner, limiting it to QR codes only
-        val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(getBarcodeFormats().first(), *getBarcodeFormats().toIntArray())
-            .build()
-
-        val barcodeScanner: BarcodeScanner = BarcodeScanning.getClient(options)
+        val reader = MultiFormatReader().apply {
+            setHints(mapOf(DecodeHintType.POSSIBLE_FORMATS to arrayListOf(BarcodeFormat.QR_CODE)))
+        }
 
         // Set up the analysis Usecase
         val imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetAspectRatio(aspectRatio)
+            .setTargetResolution(Size(512, 512))
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
 
         // Initialize our background executor to process images in the background
@@ -242,7 +241,7 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
         imageAnalyzer.setAnalyzer(
             cameraExecutor,
             { cameraFrame ->
-                processCameraFrame(cameraProvider, barcodeScanner, cameraFrame)
+                processCameraFrame(cameraProvider, reader, cameraFrame)
             }
         )
 
@@ -269,36 +268,46 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
     @SuppressLint("UnsafeExperimentalUsageError", "UnsafeOptInUsageError")
     private fun processCameraFrame(
         cameraProvider: ProcessCameraProvider,
-        barcodeScanner: BarcodeScanner,
+        reader: MultiFormatReader,
         cameraFrame: ImageProxy
     ) {
-        cameraFrame.image?.let { frame ->
-            val inputImage =
-                InputImage.fromMediaImage(frame, cameraFrame.imageInfo.rotationDegrees)
-
-            barcodeScanner.process(inputImage)
-                .addOnSuccessListener { barcodes ->
-                    barcodes.firstOrNull()?.rawValue?.let {
-                        onQrScanned(it)
-                        cameraProvider.unbindAll()
-                    }
+        // FIXME
+        Handler(Looper.getMainLooper()).post {
+            cameraFrame.image?.let { frame ->
+                val data = frame.planes[0].buffer.run {
+                    rewind()
+                    ByteArray(remaining()).also { get(it) }
                 }
-                .addOnFailureListener {
-                    Timber.e("Exception while processing frame: $it")
-                    throw it
-                }.addOnCompleteListener {
-                    // When the image is from a CameraX analysis use case, we must call .close() on received
-                    // images when we're finished using them. Otherwise, new images may not be received or the camera
-                    // may stall.
+                val source = PlanarYUVLuminanceSource(
+                    data,
+                    frame.width,
+                    frame.height,
+                    0,
+                    0,
+                    frame.width,
+                    frame.height,
+                    false
+                )
+                val bitmap = BinaryBitmap(HybridBinarizer(source))
+                try {
+                    val result = reader.decodeWithState(bitmap)
+                    onQrScanned(result.text)
+                    cameraProvider.unbindAll()
+                } catch (e: NotFoundException) {
+                    // try again
+                } catch (e: Exception) {
+                    Timber.e("Exception while processing frame: $e")
+                    throw e
+                } finally {
+                    reader.reset()
                     cameraFrame.close()
                 }
+            }
         }
-
     }
 
     abstract fun onQrScanned(content: String)
     abstract fun getCopy(): Copy
-    abstract fun getBarcodeFormats(): List<Int>
 
     override fun onDestroyView() {
         super.onDestroyView()
