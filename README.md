@@ -3,6 +3,10 @@
 NB: it's not really a "fork", just a few patches for F-Droid, no other
 divergence from upstream.
 
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
+     alt="Get it on F-Droid"
+     height="80">](https://f-droid.org/packages/nl.rijksoverheid.ctr.verifier/)
+
 ## Upstream repo & issue tracker
 
 https://github.com/minvws/nl-covid19-coronacheck-app-android
