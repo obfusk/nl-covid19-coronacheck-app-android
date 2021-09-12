@@ -25,6 +25,7 @@ https://github.com/minvws/nl-covid19-coronacheck-app-android
 * remove non-free images (icon is replaced, rest is made blank for now)
 * disable update check
 * provide triple-t metadata for F-Droid
+* use old `DIGI_D_REDIRECT_URI` (new one doesn't work w/ some browsers)
 
 ## TODO
 
