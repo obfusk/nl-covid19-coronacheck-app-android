@@ -1,12 +1,14 @@
 package nl.rijksoverheid.ctr.holder.ui.create_qr.repositories
 
+import android.net.NetworkRequest
 import android.util.Base64
+import nl.rijksoverheid.ctr.api.factory.NetworkRequestResultFactory
+import nl.rijksoverheid.ctr.shared.models.NetworkRequestResult
+import nl.rijksoverheid.ctr.holder.HolderStep
 import nl.rijksoverheid.ctr.holder.ui.create_qr.api.HolderApiClient
 import nl.rijksoverheid.ctr.holder.ui.create_qr.models.*
 import nl.rijksoverheid.ctr.holder.ui.create_qr.models.post.GetCouplingData
 import nl.rijksoverheid.ctr.holder.ui.create_qr.models.post.GetCredentialsPostData
-import okhttp3.ResponseBody
-import retrofit2.Converter
 
 /*
  *  Copyright (c) 2021 De Staat der Nederlanden, Ministerie van Volksgezondheid, Welzijn en Sport.
@@ -18,57 +20,73 @@ import retrofit2.Converter
 
 interface CoronaCheckRepository {
     suspend fun configProviders(): RemoteConfigProviders
-    suspend fun accessTokens(jwt: String): RemoteAccessTokens
+    suspend fun configProvidersResult(): NetworkRequestResult<RemoteConfigProviders>
+    suspend fun accessTokens(jwt: String): NetworkRequestResult<RemoteAccessTokens>
     suspend fun getGreenCards(
         stoken: String,
         events: List<String>,
         issueCommitmentMessage: String
-    ): RemoteGreenCards
+    ): NetworkRequestResult<RemoteGreenCards>
 
-    suspend fun getPrepareIssue(): RemotePrepareIssue
-    suspend fun getCoupling(credential: String, couplingCode: String): RemoteCouplingResponse
+    suspend fun getPrepareIssue(): NetworkRequestResult<RemotePrepareIssue>
+    suspend fun getCoupling(credential: String, couplingCode: String): NetworkRequestResult<RemoteCouplingResponse>
 }
 
 open class CoronaCheckRepositoryImpl(
     private val api: HolderApiClient,
-    private val errorResponseConverter: Converter<ResponseBody, ResponseError>
+    private val networkRequestResultFactory: NetworkRequestResultFactory
 ) : CoronaCheckRepository {
 
     override suspend fun configProviders(): RemoteConfigProviders {
         return api.getConfigCtp()
     }
 
-    override suspend fun accessTokens(jwt: String): RemoteAccessTokens {
-        return api.getAccessTokens(authorization = "Bearer $jwt")
+    override suspend fun configProvidersResult(): NetworkRequestResult<RemoteConfigProviders> {
+        return networkRequestResultFactory.createResult(HolderStep.ConfigProvidersNetworkRequest) {
+            api.getConfigCtp()
+        }
+    }
+
+    override suspend fun accessTokens(jwt: String): NetworkRequestResult<RemoteAccessTokens> {
+        return networkRequestResultFactory.createResult(HolderStep.AccessTokensNetworkRequest) {
+            api.getAccessTokens(authorization = "Bearer $jwt")
+        }
     }
 
     override suspend fun getGreenCards(
         stoken: String,
         events: List<String>,
         issueCommitmentMessage: String
-    ): RemoteGreenCards {
-        return api.getCredentials(
-            data = GetCredentialsPostData(
-                stoken = stoken,
-                events = events,
-                issueCommitmentMessage = Base64.encodeToString(
-                    issueCommitmentMessage.toByteArray(),
-                    Base64.NO_WRAP
+    ): NetworkRequestResult<RemoteGreenCards> {
+        return networkRequestResultFactory.createResult(HolderStep.GetCredentialsNetworkRequest) {
+            api.getCredentials(
+                data = GetCredentialsPostData(
+                    stoken = stoken,
+                    events = events,
+                    issueCommitmentMessage = Base64.encodeToString(
+                        issueCommitmentMessage.toByteArray(),
+                        Base64.NO_WRAP
+                    )
                 )
             )
-        )
+        }
     }
 
-    override suspend fun getPrepareIssue(): RemotePrepareIssue {
-        return api.getPrepareIssue()
+    override suspend fun getPrepareIssue(): NetworkRequestResult<RemotePrepareIssue> {
+        return networkRequestResultFactory.createResult(HolderStep.PrepareIssueNetworkRequest) {
+            api.getPrepareIssue()
+        }
     }
 
-    override suspend fun getCoupling(credential: String, couplingCode: String): RemoteCouplingResponse {
-        return api.getCoupling(
-            data = GetCouplingData(
-                credential = credential,
-                couplingCode = couplingCode
+    override suspend fun getCoupling(credential: String,
+                                     couplingCode: String): NetworkRequestResult<RemoteCouplingResponse> {
+        return networkRequestResultFactory.createResult(HolderStep.CouplingNetworkRequest) {
+            api.getCoupling(
+                data = GetCouplingData(
+                    credential = credential,
+                    couplingCode = couplingCode
+                )
             )
-        )
+        }
     }
 }
