@@ -1,7 +1,3 @@
-package nl.rijksoverheid.ctr.holder.ui.myoverview.models
-
-import android.content.Intent
-
 /*
  *  Copyright (c) 2021 De Staat der Nederlanden, Ministerie van Volksgezondheid, Welzijn en Sport.
  *   Licensed under the EUROPEAN UNION PUBLIC LICENCE v. 1.2
@@ -9,7 +5,7 @@ import android.content.Intent
  *   SPDX-License-Identifier: EUPL-1.2
  *
  */
-data class ReturnAppData(
-    val appName: String,
-    val intent: Intent
-)
+
+package nl.rijksoverheid.ctr.shared.exceptions
+
+class OpenIdAuthorizationException(val type: Int, val code: Int) : Exception()

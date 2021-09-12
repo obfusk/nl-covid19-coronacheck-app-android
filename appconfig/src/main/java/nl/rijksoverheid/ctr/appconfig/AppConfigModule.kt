@@ -35,7 +35,8 @@ fun appConfigModule(path: String, versionCode: Int) = module {
             get(),
             get(),
             get(),
-            isVerifierApp(androidContext())
+            get(),
+            isVerifierApp(androidContext()),
         )
     }
     factory<AppConfigPersistenceManager> { AppConfigPersistenceManagerImpl(get()) }
@@ -54,8 +55,9 @@ fun appConfigModule(path: String, versionCode: Int) = module {
             androidContext().filesDir.path
         )
     }
-    factory<ClockDeviationUseCase> { ClockDeviationUseCaseImpl(get(), get(), get()) }
+    single<ClockDeviationUseCase> { ClockDeviationUseCaseImpl(get(), get(), get()) }
     factory<ClockDeviationPersistenceManager> { ClockDeviationPersistenceManagerImpl(get()) }
+    factory<RecommendedUpdatePersistenceManager> { RecommendedUpdatePersistenceManagerImpl(get()) }
 
     single {
         val okHttpClient = get<OkHttpClient>(OkHttpClient::class).newBuilder().build()
