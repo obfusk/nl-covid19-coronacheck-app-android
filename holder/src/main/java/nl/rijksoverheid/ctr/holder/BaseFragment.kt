@@ -16,6 +16,14 @@ abstract class BaseFragment(contentLayoutId: Int) : Fragment(contentLayoutId) {
     protected val errorCodeStringFactory: ErrorCodeStringFactory by inject()
     private val dialogUtil: DialogUtil by inject()
 
+    /**
+     * Function that is also called when a network requests fails and a user presses the "retry" button
+     */
+    abstract fun onButtonClickWithRetryAction()
+
+    /**
+     * Get the current [Flow] for this screen
+     */
     abstract fun getFlow(): Flow
 
     fun presentError(errorResult: ErrorResult, customerErrorDescription: String? = null) {
@@ -24,26 +32,28 @@ abstract class BaseFragment(contentLayoutId: Int) : Fragment(contentLayoutId) {
                 context = requireContext(),
                 title = R.string.dialog_no_internet_connection_title,
                 message = getString(R.string.dialog_no_internet_connection_description),
-                positiveButtonText = R.string.dialog_close,
-                positiveButtonCallback = {}
+                positiveButtonText = R.string.dialog_retry,
+                positiveButtonCallback = {
+                    onButtonClickWithRetryAction()
+                },
+                negativeButtonText = R.string.dialog_close
             )
         } else {
+            val errorCodeString = errorCodeStringFactory.get(
+                flow = getFlow(),
+                errorResults = listOf(errorResult)
+            )
             if (is429HttpError(errorResult) || errorResult is OpenIdErrorResult.ServerBusy ) {
                 // On HTTP 429 or server busy error we make an exception and show a too busy screen
                 presentError(
                     data = ErrorResultFragmentData(
                         title = getString(R.string.error_too_busy_title),
-                        description = getString(R.string.error_too_busy_description),
+                        description = getString(R.string.error_too_busy_description, errorCodeString),
                         buttonTitle = getString(R.string.back_to_overview),
                         buttonAction = ErrorResultFragmentData.ButtonAction.Destination(R.id.action_my_overview)
                     )
                 )
             } else {
-                val errorCodeString = errorCodeStringFactory.get(
-                    flow = getFlow(),
-                    errorResults = listOf(errorResult)
-                )
-
                 val errorDescription = customerErrorDescription
                     ?: if (errorResult is NetworkRequestResult.Failed.CoronaCheckHttpError) {
                         getString(
