@@ -6,8 +6,8 @@ plugins {
     id "androidx.navigation.safeargs.kotlin"
 }
 
-def appVersionCode = 2161
-version = "2.3.0"
+def appVersionCode = 2161 + 1 // FIXME
+version = "2.3.1"
 archivesBaseName = "verifier-v${version}-${appVersionCode}"
 
 android {
