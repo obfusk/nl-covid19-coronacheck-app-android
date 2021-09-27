@@ -5,10 +5,12 @@ import nl.rijksoverheid.ctr.appconfig.*
 import nl.rijksoverheid.ctr.appconfig.persistence.AppConfigStorageManager
 import nl.rijksoverheid.ctr.design.designModule
 import nl.rijksoverheid.ctr.introduction.introductionModule
+import nl.rijksoverheid.ctr.qrscanner.qrScannerModule
 import nl.rijksoverheid.ctr.shared.MobileCoreWrapper
 import nl.rijksoverheid.ctr.shared.SharedApplication
 import nl.rijksoverheid.ctr.shared.sharedModule
 import nl.rijksoverheid.ctr.verifier.modules.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -33,10 +35,11 @@ open class VerifierApplication : SharedApplication() {
             androidContext(this@VerifierApplication)
             modules(
                 apiModule(
-                    BuildConfig.BASE_API_URL,
+                    BuildConfig.BASE_API_URL.toHttpUrl(),
                     BuildConfig.SIGNATURE_CERTIFICATE_CN_MATCH,
                     BuildConfig.FEATURE_CORONA_CHECK_API_CHECKS,
-                    BuildConfig.FEATURE_TEST_PROVIDER_API_CHECKS
+                    BuildConfig.FEATURE_TEST_PROVIDER_API_CHECKS,
+                    BuildConfig.CERTIFICATE_PINS,
                 ),
                 verifierModule("verifier"),
                 verifierIntroductionModule,
@@ -44,7 +47,8 @@ open class VerifierApplication : SharedApplication() {
                 appConfigModule("verifier", BuildConfig.VERSION_CODE),
                 introductionModule,
                 *getAdditionalModules().toTypedArray(),
-                designModule
+                designModule,
+                qrScannerModule
             )
         }
 

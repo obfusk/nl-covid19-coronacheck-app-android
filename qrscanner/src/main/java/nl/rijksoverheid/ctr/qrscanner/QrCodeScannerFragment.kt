@@ -36,6 +36,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.zxing.*
 import com.google.zxing.common.HybridBinarizer
 import nl.rijksoverheid.ctr.qrscanner.databinding.FragmentScannerBinding
+import nl.rijksoverheid.ctr.zebrascanner.ZebraManager
+import org.koin.android.ext.android.get
+import org.koin.core.error.NoBeanDefFoundException
 import timber.log.Timber
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -46,6 +49,11 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
 
     private var _binding: FragmentScannerBinding? = null
     val binding get() = _binding!!
+    private val zebraManager: ZebraManager? = try {
+        get()
+    } catch (e: NoBeanDefFoundException) {
+        null
+    }
 
     companion object {
         private const val RATIO_4_3_VALUE = 4.0 / 3.0
@@ -56,7 +64,7 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             if (isAdded) {
                 if (isCameraPermissionGranted()) {
-                    setupCamera()
+                    setUpScanner(forceCamera = true)
                 } else {
                     val rationaleDialog = getCopy().rationaleDialog
                     if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) && rationaleDialog != null) {
@@ -70,6 +78,14 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
         super.onViewCreated(view, savedInstanceState)
 
         _binding = FragmentScannerBinding.bind(view)
+        if(zebraManager?.isZebraDevice() == true){
+            // Setup Zebra scanner
+            zebraManager.setupZebraScanner(onDatawedgeResultListener = {
+                onQrScanned(it)
+            })
+
+            binding.zebraContrainer.visibility = View.VISIBLE
+        }
 
         // Set overlay to software accelerated only to fix transparency on certain devices
         binding.overlay.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
@@ -106,11 +122,31 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
 
     override fun onStart() {
         super.onStart()
-        setupCamera()
+        setUpScanner()
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
-    protected fun setupCamera() {
+    protected fun setUpScanner(forceCamera: Boolean = false) {
+        if (forceCamera || zebraManager == null || zebraManager.isZebraDevice() == false) {
+            setupCamera()
+        } else {
+            // Enable Zebra scanners
+            zebraManager.resumeScanner()
+
+            binding.toolbar.menu.findItem(R.id.camera).isVisible = true
+            binding.toolbar.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.camera -> {
+                        setupCamera()
+                        item.isVisible = false
+                    }
+                }
+                true
+            }
+        }
+    }
+
+    private fun setupCamera() {
         // make sure it's still added when coming back from a dialog
         if (!isAdded) {
             return
@@ -201,14 +237,12 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
                                         item,
                                         resources.getString(R.string.accessibility_flash_off)
                                     )
-                                    item.setIcon(R.drawable.ic_flash_off)
                                 } else {
                                     camera.cameraControl.enableTorch(false)
                                     MenuItemCompat.setContentDescription(
                                         item,
                                         resources.getString(R.string.accessibility_flash_on)
                                     )
-                                    item.setIcon(R.drawable.ic_flash_on)
                                 }
                             }
                         }
@@ -306,7 +340,8 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
                     onQrScanned(result.text)
                     cameraProvider.unbindAll()
                     if (isAdded) {
-                        binding.toolbar.menu.findItem(R.id.flash).setIcon(R.drawable.ic_flash_on)
+                        binding.toolbar.menu.findItem(R.id.flash)
+                            .setIcon(R.drawable.ic_torch)
                     }
                 } catch (e: NotFoundException) {
                     // try again
@@ -329,6 +364,8 @@ abstract class QrCodeScannerFragment : Fragment(R.layout.fragment_scanner) {
         _binding = null
         requireActivity().requestedOrientation =
             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        // Teardown Zebra scanner if one is running
+        zebraManager?.teardownZebraScanner()
     }
 
     /**
