@@ -22,11 +22,11 @@ import nl.rijksoverheid.ctr.holder.HolderFlow
 import nl.rijksoverheid.ctr.holder.HolderMainFragment
 import nl.rijksoverheid.ctr.holder.R
 import nl.rijksoverheid.ctr.holder.databinding.FragmentYourEventsBinding
-import nl.rijksoverheid.ctr.holder.persistence.CachedAppConfigUseCase
 import nl.rijksoverheid.ctr.holder.persistence.database.DatabaseSyncerResult
 import nl.rijksoverheid.ctr.holder.persistence.database.entities.OriginType
 import nl.rijksoverheid.ctr.holder.ui.create_qr.items.YourEventWidget
 import nl.rijksoverheid.ctr.holder.ui.create_qr.models.*
+import nl.rijksoverheid.ctr.holder.ui.create_qr.usecases.ConfigProvidersUseCase
 import nl.rijksoverheid.ctr.holder.ui.create_qr.util.InfoScreenUtil
 import nl.rijksoverheid.ctr.holder.ui.create_qr.util.RemoteEventUtil
 import nl.rijksoverheid.ctr.holder.ui.create_qr.util.RemoteProtocol3Util
@@ -48,14 +48,37 @@ class YourEventsFragment : BaseFragment(R.layout.fragment_your_events) {
 
     private val args: YourEventsFragmentArgs by navArgs()
 
-    private val cachedAppConfigUseCase: CachedAppConfigUseCase by inject()
     private val personalDetailsUtil: PersonalDetailsUtil by inject()
     private val infoScreenUtil: InfoScreenUtil by inject()
     private val dialogUtil: DialogUtil by inject()
+
     private val remoteProtocol3Util: RemoteProtocol3Util by inject()
     private val remoteEventUtil: RemoteEventUtil by inject()
 
     private val yourEventsViewModel: YourEventsViewModel by viewModel()
+
+    private val configProvidersUseCase: ConfigProvidersUseCase by inject()
+
+    override fun onButtonClickWithRetryAction() {
+        when (val type = args.type) {
+            is YourEventsFragmentType.TestResult2 -> {
+                yourEventsViewModel.saveNegativeTest2(
+                    negativeTest2 = type.remoteTestResult,
+                    rawResponse = type.rawResponse
+                )
+            }
+            is YourEventsFragmentType.RemoteProtocol3Type -> {
+                yourEventsViewModel.checkForConflictingEvents(
+                    remoteProtocols3 = type.remoteEvents,
+                )
+            }
+            is YourEventsFragmentType.DCC -> {
+                yourEventsViewModel.checkForConflictingEvents(
+                    remoteProtocols3 = type.remoteEvents,
+                )
+            }
+        }
+    }
 
     override fun getFlow(): Flow {
         when (val type = args.type) {
@@ -242,6 +265,13 @@ class YourEventsFragment : BaseFragment(R.layout.fragment_your_events) {
         }
     }
 
+    private fun getProviderName(providerIdentifier: String): String {
+        return (args.type as? YourEventsFragmentType.RemoteProtocol3Type)
+            ?.eventProviders?.firstOrNull { it.identifier == providerIdentifier }
+            ?.name
+            ?: providerIdentifier
+    }
+
     private fun presentEvents(
         remoteEvents: Map<RemoteProtocol3, ByteArray>,
         binding: FragmentYourEventsBinding,
@@ -253,7 +283,7 @@ class YourEventsFragment : BaseFragment(R.layout.fragment_your_events) {
 
         groupedEvents.forEach { protocolGroupedEvent ->
             val holder = protocolGroupedEvent.value.firstOrNull()?.holder
-            val providerIdentifiers = protocolGroupedEvent.value.map { it.providerIdentifier }.map { cachedAppConfigUseCase.getProviderName(it) }
+            val providerIdentifiers = protocolGroupedEvent.value.map { it.providerIdentifier }.map { getProviderName(it) }
             val allSameEvents = protocolGroupedEvent.value.map { it.remoteEvent }
             val allEventsInformation = protocolGroupedEvent.value.map { RemoteEventInformation(it.providerIdentifier, holder, it.remoteEvent) }
             remoteEventUtil.removeDuplicateEvents(allSameEvents).forEach { remoteEvent ->
@@ -381,7 +411,7 @@ class YourEventsFragment : BaseFragment(R.layout.fragment_your_events) {
                                     event = vaccinationEvent,
                                     fullName = fullName,
                                     birthDate = birthDate,
-                                    providerIdentifier = cachedAppConfigUseCase.getProviderName(it.providerIdentifier),
+                                    providerIdentifier = getProviderName(it.providerIdentifier),
                                 )
                             }.toTypedArray()
                         )
@@ -517,24 +547,7 @@ class YourEventsFragment : BaseFragment(R.layout.fragment_your_events) {
 
     private fun handleButton(binding: FragmentYourEventsBinding) {
         binding.bottom.setButtonClick {
-            when (val type = args.type) {
-                is YourEventsFragmentType.TestResult2 -> {
-                    yourEventsViewModel.saveNegativeTest2(
-                        negativeTest2 = type.remoteTestResult,
-                        rawResponse = type.rawResponse
-                    )
-                }
-                is YourEventsFragmentType.RemoteProtocol3Type -> {
-                    yourEventsViewModel.checkForConflictingEvents(
-                        remoteProtocols3 = type.remoteEvents,
-                    )
-                }
-                is YourEventsFragmentType.DCC -> {
-                    yourEventsViewModel.checkForConflictingEvents(
-                        remoteProtocols3 = type.remoteEvents,
-                    )
-                }
-            }
+            onButtonClickWithRetryAction()
         }
     }
 

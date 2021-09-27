@@ -14,9 +14,7 @@ import nl.rijksoverheid.ctr.holder.ui.create_qr.digid.DigidResult
 import nl.rijksoverheid.ctr.holder.ui.create_qr.models.RemoteProtocol3
 import nl.rijksoverheid.ctr.holder.ui.create_qr.models.SignedResponseWithModel
 import nl.rijksoverheid.ctr.holder.ui.create_qr.usecases.EventsResult
-import nl.rijksoverheid.ctr.shared.factories.ErrorCodeStringFactory
 import nl.rijksoverheid.ctr.shared.livedata.EventObserver
-import nl.rijksoverheid.ctr.shared.models.ErrorResult
 import nl.rijksoverheid.ctr.shared.models.ErrorResultFragmentData
 import nl.rijksoverheid.ctr.shared.models.Flow
 import nl.rijksoverheid.ctr.shared.utils.Accessibility.setAsAccessibilityButton
@@ -33,7 +31,12 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class ChooseProviderFragment : DigiDFragment(R.layout.fragment_choose_provider) {
 
     private val dialogUtil: DialogUtil by inject()
+
     private val getEventsViewModel: GetEventsViewModel by viewModel()
+
+    override fun onButtonClickWithRetryAction() {
+        loginWithDigiD()
+    }
 
     override fun getFlow(): Flow {
         return HolderFlow.CommercialTest
@@ -52,10 +55,9 @@ class ChooseProviderFragment : DigiDFragment(R.layout.fragment_choose_provider) 
 
         binding.providerGgd.bind(
             R.string.choose_provider_ggd_title,
-            getString(R.string.choose_provider_ggd_subtitle)
-        ) {
-            loginWithDigiD()
-        }
+            getString(R.string.choose_provider_ggd_subtitle),
+            R.drawable.ic_digid_logo,
+        ) { onButtonClickWithRetryAction() }
 
         binding.notYetTested.setOnClickListener {
             findNavController().navigate(ChooseProviderFragmentDirections.actionNotYetTested())
@@ -96,7 +98,10 @@ class ChooseProviderFragment : DigiDFragment(R.layout.fragment_choose_provider) 
                         presentError(
                             data = ErrorResultFragmentData(
                                 title = getString(R.string.error_get_events_no_events_title),
-                                description = getString(R.string.error_get_events_http_error_description, getErrorCodes(it.errorResults)),
+                                description = getString(
+                                    R.string.error_get_events_http_error_description,
+                                    getErrorCodes(it.errorResults)
+                                ),
                                 buttonTitle = getString(R.string.back_to_overview),
                                 ErrorResultFragmentData.ButtonAction.Destination(R.id.action_my_overview),
                                 urlData = ErrorResultFragmentData.UrlData(
@@ -120,7 +125,10 @@ class ChooseProviderFragment : DigiDFragment(R.layout.fragment_choose_provider) 
                     presentError(
                         data = ErrorResultFragmentData(
                             title = getString(R.string.error_something_went_wrong_title),
-                            description = getString(R.string.error_get_events_http_error_description, getErrorCodes(it.errorResults)),
+                            description = getString(
+                                R.string.error_get_events_http_error_description,
+                                getErrorCodes(it.errorResults)
+                            ),
                             buttonTitle = getString(R.string.back_to_overview),
                             ErrorResultFragmentData.ButtonAction.Destination(R.id.action_my_overview),
                             urlData = ErrorResultFragmentData.UrlData(
@@ -138,7 +146,8 @@ class ChooseProviderFragment : DigiDFragment(R.layout.fragment_choose_provider) 
                 is DigidResult.Success -> {
                     getEventsViewModel.getEvents(
                         jwt = it.jwt,
-                        originType = OriginType.Test)
+                        originType = OriginType.Test
+                    )
                 }
                 is DigidResult.Failed -> {
                     presentError(it.errorResult)
